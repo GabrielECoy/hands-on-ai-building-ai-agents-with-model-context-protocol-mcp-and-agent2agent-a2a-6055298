@@ -69,9 +69,9 @@ def get_llm_prompt(query: str) -> str:
 # Run the policy Server
 # -----------------------------------------------------------------------
 
-# test
-# print(query_policies("What is the policy on remote work?"))
-
+# test *** commnet remove @hr_policies_mcp.tool() decorator to run this test ***
+#print("Test Query Result:")
+#print(query_policies("What is the policy on remote work?"))
 
 if __name__ == "__main__":
     hr_policies_mcp.run(transport="stdio")

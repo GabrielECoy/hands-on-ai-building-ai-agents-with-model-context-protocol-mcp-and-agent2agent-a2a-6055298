@@ -4,42 +4,69 @@ from mcp.client.stdio import stdio_client
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_mcp_adapters.prompts import load_mcp_prompt
 from langgraph.prebuilt import create_react_agent
-from langchain_openai import AzureChatOpenAI
+# previously was: from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI
 
 import asyncio
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
-#-----------------------------------------------------------------------
+# -----------------------------------------------------------------------
 # Setup the LLM for the HR Policy Agent
 # This uses the Azure OpenAI service with a specific deployment
 # Please replace the environment variables with your own values
-#-----------------------------------------------------------------------
+# -----------------------------------------------------------------------
+# *** Changes to the above comment, this is now going to use navite OpenAI model ***
+# More info and similar changes in: code_of_conduct_client.py in chapter2
+# -----------------------------------------------------------------------
 
-endpoint = os.getenv("ENDPOINT_URL")
-deployment = os.getenv("DEPLOYMENT_NAME")
-subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
-api_version=os.getenv("API_VERSION")
+load_dotenv()
 
-model=AzureChatOpenAI(
-    azure_endpoint=endpoint,
-    api_key=subscription_key,
-    api_version=api_version,
-    deployment_name=deployment,
+model = ChatOpenAI(
+    model="gpt-4.1",
+    # temperature=0.7,
+    # max_tokens=512,
 )
 
-#-----------------------------------------------------------------------
+# Fix added by copilot to patch langgraph compatibility issue.
+# More info at hr_policy_agend (error fix explanation).md
+#
+# Workaround: some installed versions of `langgraph` use `input` as the
+# add_node kwarg while `create_react_agent` (from another langgraph
+# release) passes `input_schema`. Patch StateGraph.add_node to accept
+# `input_schema` and map it to `input` so the prebuilt agent works with
+# the currently installed langgraph.
+try:
+    from functools import wraps
+    from langgraph.graph import StateGraph
+
+    _orig_add_node = StateGraph.add_node
+
+    @wraps(_orig_add_node)
+    def _patched_add_node(self, node, action=None, *args, **kwargs):
+        # map older/newer kw name to the implemented one
+        if 'input_schema' in kwargs and 'input' not in kwargs:
+            kwargs['input'] = kwargs.pop('input_schema')
+        return _orig_add_node(self, node, action, *args, **kwargs)
+
+    StateGraph.add_node = _patched_add_node
+    print('Patched StateGraph.add_node to accept input_schema -> input')
+except Exception as _e:
+    # If patching fails, continue and let the original error surface later.
+    print('Could not patch StateGraph.add_node:', _e)
+
+# -----------------------------------------------------------------------
 # Define the HR policy agent that will use the MCP server
 # to answer queries about HR policies.
-#-----------------------------------------------------------------------
+# -----------------------------------------------------------------------
+
+
 async def run_hr_policy_agent(prompt: str) -> str:
 
     # Make sure the right path to the server file is passed.
     hr_mcp_server_path = os.path.abspath(
-                            os.path.join(os.path.dirname(__file__), 
-                                            "hr_policy_server.py"))
+        os.path.join(os.path.dirname(__file__),
+                     "hr_policy_server.py"))
     print("HR MCP server path: ", hr_mcp_server_path)
 
     # Create the server parameters for the MCP server
@@ -49,22 +76,22 @@ async def run_hr_policy_agent(prompt: str) -> str:
     )
 
     # Create a client session to connect to the MCP server
-    async with stdio_client(server_params) as (read,write):
-        async with ClientSession(read,write) as session:
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
             print("initializing session")
             await session.initialize()
 
             print("\nloading tools & prompt")
             hr_policy_tools = await load_mcp_tools(session)
-            hr_policy_prompt = await load_mcp_prompt(session, 
-                                "get_llm_prompt", 
-                                arguments={"query": prompt})
+            hr_policy_prompt = await load_mcp_prompt(session,
+                                                     "get_llm_prompt",
+                                                     arguments={"query": prompt})
 
             print("\nTools loaded :", hr_policy_tools[0].name)
             print("\nPrompt loaded :", hr_policy_prompt)
 
             print("\nCreating agent")
-            agent=create_react_agent(model,hr_policy_tools)
+            agent = create_react_agent(model, hr_policy_tools)
 
             print("\nAnswering prompt : ", prompt)
             agent_response = await agent.ainvoke(
