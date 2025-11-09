@@ -10,4 +10,4 @@ PyPDF2==3.0.1
 pypdf==5.5.0
 sentence-transformers==4.1.0
 fastmcp==2.3.5
-a2a-sdk==0.2.8
+a2a-sdk==0.2.8 

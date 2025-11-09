@@ -1,16 +1,19 @@
+# # I had to update fastmcp to version 2.12.0 (pip install --upgrade fastmcp==2.12.0) to avoid the error:
+# "TypeError: cannot specify both default and default_factory"
+# More info at FastMCPDemo.py
+
+from langchain_openai import AzureChatOpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_mcp_adapters.resources import load_mcp_resources
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI # previously was: from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import AIMessage
 
 import asyncio
 import os
 from dotenv import load_dotenv
-
-load_dotenv()
 
 #-----------------------------------------------------------------------
 #Configure the MCP Server Connection
@@ -22,19 +25,45 @@ server_params = StdioServerParameters(
 )
 
 #-----------------------------------------------------------------------
-#Setup the Azure OpenAI model
+#Setup the OpenAI model (before it was Azure OpenAI model)
 #-----------------------------------------------------------------------
-endpoint = os.getenv("ENDPOINT_URL")
-deployment = os.getenv("DEPLOYMENT_NAME")
-subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
-api_version=os.getenv("API_VERSION")
+load_dotenv()  # Loading OPENAI_API_KEY value (and old ones for Azure OpenAI)
+# .env was tracked in git, so I had to add it to .gitignore and remove it from git tracking
+## git status --short
+## check if tracked
+#git ls-files - -error-unmatch .env & & echo ".env is tracked" | | echo ".env is not tracked"
+## show which ignore rule (if any) would match:
+#git check-ignore - v .env | | true
+#
+# git rm --cached .env
+# git commit - m "Stop tracking .env (now in .gitignore)"
 
-model=AzureChatOpenAI(
-    azure_endpoint=endpoint,
-    api_key=subscription_key,
-    api_version=api_version,
-    deployment_name=deployment,
+
+# old parameters for Azure OpenAI
+#endpoint = os.getenv("ENDPOINT_URL")
+#deployment = os.getenv("DEPLOYMENT_NAME")
+#subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
+#api_version=os.getenv("API_VERSION")
+
+model = ChatOpenAI(
+    model="gpt-4.1",
+    #temperature=0.7,
+    #max_tokens=512,
 )
+# old code for Azure OpenAI
+#model=AzureChatOpenAI(
+#    azure_endpoint=endpoint,
+#    api_key=subscription_key,
+#    api_version=api_version,
+#    deployment_name=deployment,
+#)
+
+# Common Mistake: Using AzureChatOpenAI with OpenAI Key
+# WRONG — This is for AZURE only
+# llm = AzureChatOpenAI(
+#    azure_endpoint="https://api.openai.com",  # This will fail!
+#    api_key="sk-..."
+#)
 
 #-----------------------------------------------------------------------
 #Asynchronous function to fetch content from MCP resource
