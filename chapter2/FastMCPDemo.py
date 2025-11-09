@@ -1,4 +1,4 @@
-# This is the demo I copy&pasted from the 
+# This is the demo I copy&pasted from the https://gofastmcp.com side
 # I had to update fastmcp to version 2.12.0 (pip install --upgrade fastmcp==2.12.0) to avoid the below error
 # Error:
 # "TypeError: cannot specify both default and default_factory"
