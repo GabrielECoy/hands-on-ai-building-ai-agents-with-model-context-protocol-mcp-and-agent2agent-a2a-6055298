@@ -36,8 +36,6 @@ import asyncio
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-
 # -----------------------------------------------------------------------
 # Setup the LLM for the HR Timeoff Agent
 # This uses the Azure OpenAI service with a specific deployment

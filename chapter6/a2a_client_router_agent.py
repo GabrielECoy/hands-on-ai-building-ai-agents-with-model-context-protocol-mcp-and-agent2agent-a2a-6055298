@@ -15,22 +15,23 @@ import operator
 import asyncio
 import os
 from dotenv import load_dotenv
-from langchain_openai import AzureChatOpenAI
+# Added as part of the copilot fix (see note at the bottom of the file)
+import concurrent.futures
+# previously was: from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI
 import uuid
 import json
 
+# *** Changes to the above comment, this is now going to use navite OpenAI model ***
+# More info and similar changes in: code_of_conduct_client.py in chapter2
+# -----------------------------------------------------------------------
+
 load_dotenv()
 
-endpoint = os.getenv("ENDPOINT_URL")
-deployment = os.getenv("DEPLOYMENT_NAME")
-subscription_key = os.getenv("AZURE_OPENAI_API_KEY")
-api_version = os.getenv("API_VERSION")
-
-model = AzureChatOpenAI(
-    azure_endpoint=endpoint,
-    api_key=subscription_key,
-    api_version=api_version,
-    deployment_name=deployment,
+model = ChatOpenAI(
+    model="gpt-4.1",
+    # temperature=0.7,
+    # max_tokens=512,
 )
 
 # ---------------------------------------------------------------
@@ -139,8 +140,20 @@ class RouterHRAgent:
         prompt = messages[0].content
         print(f"Policy agent node received {prompt}")
 
-        response = asyncio.run(execute_a2a_agent("http://localhost:9001",
-                                                 self.user, prompt))
+        # Copilot fix for improper handling of async/await (see note at the bottom of the file)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            response = asyncio.run(execute_a2a_agent("http://localhost:9001",
+                                                     self.user, prompt))
+        else:
+            # If we're already in an async context, create a task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                response = loop.run_in_executor(pool,
+                                                lambda: asyncio.run(execute_a2a_agent("http://localhost:9001",
+                                                                                      self.user, prompt)))
+                response = response.result()
 
         if self.debug:
             print(f"Policy agent node response : {response}")
@@ -154,8 +167,21 @@ class RouterHRAgent:
         prompt = messages[0].content
         print(f"Timeoff agent node received {prompt}")
 
-        response = asyncio.run(execute_a2a_agent("http://localhost:9002",
-                                                 self.user, prompt))
+       # Copilot fix for improper handling of async/await (see note at the bottom of the file)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            response = asyncio.run(execute_a2a_agent("http://localhost:9002",
+                                                     self.user, prompt))
+        else:
+            # If we're already in an async context, create a task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                response = loop.run_in_executor(pool,
+                                                lambda: asyncio.run(execute_a2a_agent("http://localhost:9002",
+                                                                                      self.user, prompt)))
+                response = response.result()
+
         if self.debug:
             print(f"Timeoff agent node response : {response}")
 
@@ -238,3 +264,16 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"An error occurred: {e}")
+
+# Explanation for Copilot fixes for improper handling of async/await above:
+# The Problem:
+# The 503 "Network communication error" was caused by improper handling of async / await in your node methods.
+#  You were using asyncio.run() inside synchronous functions that are called from LangGraph's synchronous execution
+#  context, which can cause event loop conflicts.
+# The Solution:
+# I updated both policy_agent_node and timeoff_agent_node methods to:
+# Check if there's already a running event loop using asyncio.get_running_loop()
+# If there's no running loop, use asyncio.run() directly
+# If there's already a running loop (which shouldn't happen in this sync context), use ThreadPoolExecutor to handle
+#  the async call in a separate thread
+# This ensures proper handling of the async execute_a2a_agent function regardless of the execution context.

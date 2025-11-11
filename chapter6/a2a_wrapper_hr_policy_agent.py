@@ -14,6 +14,7 @@ import os
 import json
 
 #Import the HR policy Agent implementation in this wrapper
+#First line adds the resulting absolute path to Python’s module search list
 sys.path.append(os.path.abspath(os.path.join(
             os.path.dirname(__file__), '../chapter3')))
 import hr_policy_agent
