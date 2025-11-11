@@ -106,6 +106,17 @@ class TimeOffDatastore:
 if __name__ == "__main__":
     ds = TimeOffDatastore()
     print("Alice's balance:", ds.get_timeoff_balance("Alice"))
-    ds.add_timeoff_request("Alice", "2024-06-10", 2)
-    print("Alice's balance after request:", 
-            ds.get_timeoff_balance("Alice"))
+    try:
+        result=ds.add_timeoff_request("Alice", "2024-06-10", 2)
+        print("Request result:", result)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    print("Alice's balance after request:", ds.get_timeoff_balance("Alice"))
+    try:
+        result = ds.add_timeoff_request("Alice", "2024-08-10", 15)
+        print("Request result:", result)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    print("Alice's balance after request:", ds.get_timeoff_balance("Alice"))

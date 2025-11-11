@@ -4,8 +4,7 @@ from mcp.client.stdio import stdio_client
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_mcp_adapters.prompts import load_mcp_prompt
 from langgraph.prebuilt import create_react_agent
-# previously was: from langchain_openai import AzureChatOpenAI
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI # previously was: from langchain_openai import AzureChatOpenAI
 
 import asyncio
 import os
@@ -36,6 +35,11 @@ model = ChatOpenAI(
 # release) passes `input_schema`. Patch StateGraph.add_node to accept
 # `input_schema` and map it to `input` so the prebuilt agent works with
 # the currently installed langgraph.
+#
+# Note: This fix may not be required after copilot fixed (as part of running chapter 4 excercises)
+# the issue of fastmcp==2.3.5 been incompatible with Pydantic 2.12.4 by updating the
+# requirements.txt to use a newer, compatible version of fastmcp: From >= 2.3.5 to fastmcp >= 2.12.0
+
 try:
     from functools import wraps
     from langgraph.graph import StateGraph
